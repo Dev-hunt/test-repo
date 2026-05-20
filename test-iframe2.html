@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Popup Checkout Test</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+
+    .navbar {
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .hero-section {
+      min-height: calc(100vh - 72px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .popup-status {
+      margin-top: 1.5rem;
+      min-height: 1.5rem;
+      font-size: .95rem;
+    }
+    .popup-status.error { color: #dc2626; }
+    .popup-status.ok    { color: #16a34a; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-white px-3 px-lg-4">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold" href="#">Merchant Storefront</a>
+
+      <div class="ms-auto">
+        <button
+          type="button"
+          id="openCheckoutBtn"
+          class="btn btn-primary"
+        >
+          Open Checkout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="hero-section">
+    <div>
+      <h1 class="display-6 fw-bold mb-3">Merchant Storefront</h1>
+      <p class="lead text-muted mb-2">
+        Click <strong>Open Checkout</strong> — checkout.php opens in a popup window (top-level, not nested).
+      </p>
+      <p class="text-muted small mb-0">
+        Inside the popup, picking a product triggers Kinguin's SDK iframe — only one level of iframe, no nesting.
+      </p>
+      <div id="popupStatus" class="popup-status"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Popup approach: avoids the iframe-in-iframe issue by opening checkout.php
+    // as its own top-level browser window. Kinguin's SDK then renders its iframe
+    // inside that window normally.
+    document.addEventListener('DOMContentLoaded', function () {
+      const btn = document.getElementById('openCheckoutBtn');
+      const status = document.getElementById('popupStatus');
+
+      let checkoutWindow = null;
+
+      btn.addEventListener('click', function () {
+        // Focus the existing popup if it's still open instead of stacking another one.
+        if (checkoutWindow && !checkoutWindow.closed) {
+          checkoutWindow.focus();
+          return;
+        }
+
+        const width = 1100;
+        const height = 800;
+        const left = Math.max(0, (window.screen.width  - width)  / 2);
+        const top  = Math.max(0, (window.screen.height - height) / 2);
+
+        const features = [
+          'popup=yes',
+          'width=' + width,
+          'height=' + height,
+          'left=' + left,
+          'top=' + top,
+          'resizable=yes',
+          'scrollbars=yes',
+          'noopener=no',
+        ].join(',');
+
+        checkoutWindow = window.open('checkout.php', 'kinguinCheckoutPopup', features);
+
+        if (!checkoutWindow) {
+          status.className = 'popup-status error';
+          status.textContent = 'Popup was blocked by the browser. Please allow popups for this site and try again.';
+          return;
+        }
+
+        status.className = 'popup-status ok';
+        status.textContent = 'Checkout opened in a popup window.';
+        checkoutWindow.focus();
+      });
+    });
+  </script>
+</body>
+</html>
