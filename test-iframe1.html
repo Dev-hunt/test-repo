@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iframe-in-Iframe Test</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+
+    .navbar {
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .hero-section {
+      min-height: calc(100vh - 72px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .modal-dialog.checkout-modal-dialog {
+      max-width: 1100px;
+    }
+
+    .checkout-iframe {
+      width: 100%;
+      height: 80vh;
+      min-height: 600px;
+      border: 0;
+      border-radius: 0.5rem;
+      background: #fff;
+    }
+
+    .modal-content {
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-white px-3 px-lg-4">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-semibold" href="#">Merchant Storefront</a>
+
+      <div class="ms-auto">
+        <button
+          type="button"
+          class="btn btn-primary"
+          data-bs-toggle="modal"
+          data-bs-target="#checkoutModal"
+        >
+          Open Checkout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="hero-section">
+    <div>
+      <h1 class="display-6 fw-bold mb-3">Merchant Storefront</h1>
+      <p class="lead text-muted mb-0">
+        Click the <strong>Open Checkout</strong> button in the top-right header to open checkout.php inside an iframe.
+      </p>
+    </div>
+  </main>
+
+  <!-- Checkout modal: opens checkout.php in an iframe (iframe layer 1).
+       Inside checkout.php, picking a product triggers Kinguin's SDK which renders its own iframe (layer 2).
+       This is the iframe-in-iframe scenario we are demonstrating. -->
+  <div
+    class="modal fade"
+    id="checkoutModal"
+    tabindex="-1"
+    aria-labelledby="checkoutModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable checkout-modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="checkoutModalLabel">Checkout</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body p-2">
+          <iframe
+            id="checkoutFrame"
+            class="checkout-iframe"
+            src="about:blank"
+            title="Checkout Frame"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Load checkout.php only when the modal opens (avoids running the inner SDK on page load),
+    // and clear it on close so the next open starts fresh.
+    document.addEventListener('DOMContentLoaded', function () {
+      const checkoutModalEl = document.getElementById('checkoutModal');
+      const checkoutFrame = document.getElementById('checkoutFrame');
+
+      checkoutModalEl.addEventListener('show.bs.modal', function () {
+        checkoutFrame.setAttribute('src', 'checkout.php');
+      });
+
+      checkoutModalEl.addEventListener('hidden.bs.modal', function () {
+        checkoutFrame.setAttribute('src', 'about:blank');
+      });
+    });
+  </script>
+</body>
+</html>
