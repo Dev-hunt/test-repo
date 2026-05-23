@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Checkout Overlay Test</title>
+  <title>Partner Page — Checkout Redirect Test</title>
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet"
@@ -11,7 +11,6 @@
   <style>
     body { background-color: #f8f9fa; }
     .navbar { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }
-
     .hero-section {
       min-height: calc(100vh - 72px);
       display: flex;
@@ -20,66 +19,23 @@
       text-align: center;
       padding: 2rem;
     }
-
-    /* Full-screen iframe overlay — works the same on mobile and desktop. */
-    .checkout-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(2px);
-      z-index: 2147483600;
-      display: none;
-      align-items: center;
-      justify-content: center;
+    .return-banner {
+      max-width: 480px;
+      margin: 0 auto 24px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: .9rem;
     }
-    .checkout-overlay.is-open { display: flex; }
-
-    .checkout-frame-wrap {
-      position: relative;
-      background: #fff;
-      width: 100%;
-      height: 100%;
-      max-width: 100%;
-      max-height: 100%;
-      overflow: hidden;
+    .return-banner.success {
+      background: #dcfce7;
+      color: #065f46;
+      border: 1px solid #86efac;
     }
-    /* Desktop: centered modal box. Mobile: stays full-screen. */
-    @media (min-width: 768px) {
-      .checkout-overlay { padding: 24px; }
-      .checkout-frame-wrap {
-        max-width: 1100px;
-        max-height: 90vh;
-        border-radius: 14px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-      }
+    .return-banner.cancelled {
+      background: #fef3c7;
+      color: #78350f;
+      border: 1px solid #fcd34d;
     }
-    .checkout-frame {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
-    }
-    .checkout-close-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 0;
-      background: rgba(15, 23, 42, 0.85);
-      color: #fff;
-      font-size: 22px;
-      line-height: 1;
-      cursor: pointer;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .checkout-close-btn:hover { background: rgba(15, 23, 42, 1); }
-
-    body.checkout-open { overflow: hidden; }
   </style>
 </head>
 <body>
@@ -100,53 +56,62 @@
 
   <main class="hero-section">
     <div>
+      <!-- Return-from-checkout banner (shown only when ?from_checkout=... is in the URL) -->
+      <div id="returnBanner" style="display:none;" class="return-banner"></div>
+
       <h1 class="display-6 fw-bold mb-3">Merchant Storefront</h1>
       <p class="lead text-muted mb-0">
-        Click <strong>Open Checkout</strong> — checkout.php opens in an in-page overlay.
-        No new tabs. Works the same on mobile and desktop.
+        Click <strong>Open Checkout</strong> — you'll be taken to our secure checkout
+        on <strong>nbsoft.in</strong>, then returned here after.
+      </p>
+      <p class="text-muted small mt-3 mb-0">
+        Same flow on mobile and desktop. No new tabs. Kinguin URL never visible.
       </p>
     </div>
   </main>
 
-  <!-- Checkout overlay: full-screen iframe container, stays inside the same tab. -->
-  <div class="checkout-overlay" id="checkoutOverlay" role="dialog" aria-modal="true" aria-label="Checkout">
-    <div class="checkout-frame-wrap">
-      <button type="button" class="checkout-close-btn" id="closeCheckoutBtn" aria-label="Close checkout">×</button>
-      <iframe
-        id="checkoutFrame"
-        class="checkout-frame"
-        src="about:blank"
-        title="Checkout"
-        allow="payment *"
-      ></iframe>
-    </div>
-  </div>
-
   <script>
+    // Top-level navigation flow:
+    //   partner page (this file) → x.nbsoft.in/checkout.php → back to partner page
+    // Kinguin's iframe lives inside checkout.php on nbsoft.in — its URL never
+    // appears in the browser's address bar at any point.
+    //
+    // For local testing we use a same-origin "checkout.php". In production this
+    // would be the absolute URL of our checkout host, e.g.
+    //   https://x.nbsoft.in/checkout.php
     document.addEventListener('DOMContentLoaded', function () {
-      const overlay = document.getElementById('checkoutOverlay');
-      const frame   = document.getElementById('checkoutFrame');
+      const CHECKOUT_URL = 'checkout.php';
+      // Production:  const CHECKOUT_URL = 'https://x.nbsoft.in/checkout.php';
+
       const openBtn = document.getElementById('openCheckoutBtn');
-      const closeBtn = document.getElementById('closeCheckoutBtn');
-
-      function open() {
-        frame.setAttribute('src', 'https://x.nbsoft.in/public/checkout.php');
-        overlay.classList.add('is-open');
-        document.body.classList.add('checkout-open');
-      }
-
-      function close() {
-        overlay.classList.remove('is-open');
-        document.body.classList.remove('checkout-open');
-        frame.setAttribute('src', 'about:blank');
-      }
-
-      openBtn.addEventListener('click', open);
-      closeBtn.addEventListener('click', close);
-      overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && overlay.classList.contains('is-open')) close();
+      openBtn.addEventListener('click', function () {
+        // Hand the partner's URL to checkout.php so it knows where to send the
+        // customer back after the purchase (success or cancel).
+        const returnUrl = window.location.origin + window.location.pathname;
+        const url = `${CHECKOUT_URL}?return=${encodeURIComponent(returnUrl)}`;
+        window.location.href = url;
       });
+
+      // If we came BACK from checkout (e.g. ?from_checkout=success or cancelled),
+      // show a banner so the customer knows what happened.
+      const params = new URLSearchParams(window.location.search);
+      const from = params.get('from_checkout');
+      if (from) {
+        const banner = document.getElementById('returnBanner');
+        if (from === 'success') {
+          banner.className = 'return-banner success';
+          banner.textContent = '✅ Thanks for your purchase! Your key has been delivered to your email.';
+        } else {
+          banner.className = 'return-banner cancelled';
+          banner.textContent = 'ℹ️ Checkout was not completed. You can try again any time.';
+        }
+        banner.style.display = 'block';
+
+        // Clean the URL so refresh doesn't keep showing the banner.
+        if (window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
     });
   </script>
 </body>
