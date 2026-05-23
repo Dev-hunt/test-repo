@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Checkout Overlay Test</title>
+  <title>Partner Store — Powered by Gift Card Shop</title>
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     rel="stylesheet"
@@ -11,34 +11,64 @@
   <style>
     body {
       background-color: #f8f9fa;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    .navbar { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }
-
-    .hero-section {
-      min-height: calc(100vh - 72px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .navbar { box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+    .hero {
+      padding: 60px 1rem 20px;
       text-align: center;
-      padding: 2rem;
+    }
+    .hero h1 { font-weight: 700; }
+    .hero p { color: #64748b; }
+
+    .product-card {
+      cursor: pointer;
+      border: none;
+      border-radius: 18px;
+      transition: transform .2s ease, box-shadow .2s ease;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      height: 100%;
+    }
+    .product-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 35px rgba(15, 23, 42, 0.15);
+    }
+    .product-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 16px;
+    }
+    .price-tag {
+      color: #16a34a; font-weight: 700; font-size: 18px;
+    }
+    .powered-by {
+      text-align: center;
+      color: #94a3b8;
+      font-size: .8rem;
+      padding: 30px 0 50px;
     }
 
-    /* --- Overlay & iframe container -------------------------------------- */
-    .checkout-overlay {
+    /* ===== GCS Checkout overlay — the only thing partners need to know about ===== */
+    .gcs-overlay {
       position: fixed;
       inset: 0;
       background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(2px);
-      z-index: 1050;
+      z-index: 2147483600;       /* sit above just about everything */
       display: none;
       align-items: center;
       justify-content: center;
       padding: 0;
+      animation: gcsFade .2s ease-out;
     }
-    .checkout-overlay.is-open {
-      display: flex;
+    .gcs-overlay.is-open { display: flex; }
+    @keyframes gcsFade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
-    .checkout-frame-wrap {
+
+    .gcs-frame-wrap {
       position: relative;
       background: #fff;
       width: 100%;
@@ -46,24 +76,24 @@
       max-width: 100%;
       max-height: 100%;
       overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
     }
-    /* Desktop: centered modal box */
+    /* Desktop: nice centered modal box. */
     @media (min-width: 768px) {
-      .checkout-overlay { padding: 24px; }
-      .checkout-frame-wrap {
+      .gcs-overlay { padding: 24px; }
+      .gcs-frame-wrap {
         max-width: 1100px;
         max-height: 90vh;
         border-radius: 14px;
       }
     }
-    .checkout-frame {
+    .gcs-frame {
       width: 100%;
       height: 100%;
       border: 0;
       display: block;
     }
-    .checkout-close-btn {
+    .gcs-close-btn {
       position: absolute;
       top: 12px;
       right: 12px;
@@ -73,7 +103,7 @@
       border: 0;
       background: rgba(15, 23, 42, 0.85);
       color: #fff;
-      font-size: 20px;
+      font-size: 22px;
       line-height: 1;
       cursor: pointer;
       z-index: 2;
@@ -81,87 +111,191 @@
       align-items: center;
       justify-content: center;
     }
-    .checkout-close-btn:hover { background: rgba(15, 23, 42, 1); }
-    body.checkout-open { overflow: hidden; }
+    .gcs-close-btn:hover { background: rgba(15, 23, 42, 1); }
+
+    /* Tiny loading state while the iframe is fetching */
+    .gcs-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: .9rem;
+      pointer-events: none;
+    }
+
+    body.gcs-open { overflow: hidden; }
   </style>
 </head>
 <body>
+
+  <!-- ========================================================================
+       PARTNER PAGE (simulated)
+       Pretend this is the merchant's own site. They've added a small embed
+       snippet from us (further down in the script tag) and now their
+       "Buy" buttons launch the Gift Card Shop checkout flow without ever
+       leaving their page — works the same on mobile and desktop.
+       ======================================================================== -->
+
   <nav class="navbar navbar-expand-lg navbar-light bg-white px-3 px-lg-4">
     <div class="container-fluid">
-      <a class="navbar-brand fw-semibold" href="#">Merchant Storefront</a>
-      <div class="ms-auto">
-        <button
-          type="button"
-          id="openCheckoutBtn"
-          class="btn btn-primary"
-        >
-          Open Checkout
-        </button>
-      </div>
+      <a class="navbar-brand fw-semibold" href="#">Partner Store</a>
+      <span class="text-muted small ms-auto">Demo merchant</span>
     </div>
   </nav>
 
-  <main class="hero-section">
-    <div>
-      <h1 class="display-6 fw-bold mb-3">Merchant Storefront</h1>
-      <p class="lead text-muted mb-2">
-        Click <strong>Open Checkout</strong> — checkout.php opens in an in-page overlay (no new tabs).
-      </p>
-      <p class="text-muted small mb-0">
-        Mobile: full-screen takeover. Desktop: centered modal. Kinguin URL stays hidden inside the iframe.
-      </p>
-    </div>
-  </main>
+  <section class="hero">
+    <h1 class="display-6">Buy Game Keys Instantly</h1>
+    <p>Powered by Gift Card Shop — checkout opens right here, no redirects.</p>
+  </section>
 
-  <!-- Checkout overlay: full-screen iframe container, kept inside the same tab. -->
-  <div class="checkout-overlay" id="checkoutOverlay" role="dialog" aria-modal="true" aria-label="Checkout">
-    <div class="checkout-frame-wrap">
-      <button type="button" class="checkout-close-btn" id="closeCheckoutBtn" aria-label="Close checkout">×</button>
+  <section class="pb-4">
+    <div class="container">
+      <div class="row g-4">
+
+        <div class="col-md-4">
+          <div class="card product-card">
+            <div class="card-body p-4">
+              <div class="product-icon">🎮</div>
+              <h4 class="fw-bold">Sandbox Product 1</h4>
+              <p class="text-muted">A test gift-card SKU for sandbox flows.</p>
+              <div class="d-flex justify-content-between align-items-center mt-4">
+                <span class="price-tag">EUR</span>
+                <button
+                  type="button"
+                  class="btn btn-primary rounded-pill px-4"
+                  onclick="GCS.openCheckout({product:'https://sandbox.kinguin.net/category/160'})"
+                >Buy Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card product-card">
+            <div class="card-body p-4">
+              <div class="product-icon">🔥</div>
+              <h4 class="fw-bold">Sandbox Product 2</h4>
+              <p class="text-muted">Premium demo SKU for client showcase.</p>
+              <div class="d-flex justify-content-between align-items-center mt-4">
+                <span class="price-tag">EUR</span>
+                <button
+                  type="button"
+                  class="btn btn-primary rounded-pill px-4"
+                  onclick="GCS.openCheckout({product:'https://sandbox.kinguin.net/category/274'})"
+                >Buy Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card product-card">
+            <div class="card-body p-4">
+              <div class="product-icon">⭐</div>
+              <h4 class="fw-bold">Sandbox Product 3</h4>
+              <p class="text-muted">A modern checkout demo with overlay UX.</p>
+              <div class="d-flex justify-content-between align-items-center mt-4">
+                <span class="price-tag">EUR</span>
+                <button
+                  type="button"
+                  class="btn btn-primary rounded-pill px-4"
+                  onclick="GCS.openCheckout({product:'https://sandbox.kinguin.net/category/18308'})"
+                >Buy Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <p class="powered-by">⚡ Checkout powered by <strong>Gift Card Shop</strong></p>
+
+  <!-- ============== EMBED OVERLAY (partners include this once) ============== -->
+  <div class="gcs-overlay" id="gcsOverlay" role="dialog" aria-modal="true" aria-label="Checkout">
+    <div class="gcs-frame-wrap">
+      <button type="button" class="gcs-close-btn" id="gcsCloseBtn" aria-label="Close checkout">×</button>
+      <div class="gcs-loader" id="gcsLoader">Loading checkout…</div>
       <iframe
-        id="checkoutFrame"
-        class="checkout-frame"
+        id="gcsFrame"
+        class="gcs-frame"
         src="about:blank"
         title="Checkout"
-        allow="payment"
+        allow="payment *; clipboard-write"
       ></iframe>
     </div>
   </div>
 
+  <!-- ============== EMBED SCRIPT (this is what we'd publish for partners) ===
+       Everything below this comment is the only piece partners need to copy
+       onto their site. It exposes a tiny global: window.GCS.openCheckout().
+       Same behaviour on mobile and desktop:
+         - Mobile: full-screen takeover
+         - Desktop: centered modal-sized iframe (max 1100×90vh)
+       Customer never sees a new tab. Kinguin URL stays sealed inside the iframe.
+       ====================================================================== -->
   <script>
-    // In-page iframe overlay. Lives in the same tab on desktop AND mobile,
-    // so neither checkout.php nor the Kinguin URL ever surfaces as a tab.
-    document.addEventListener('DOMContentLoaded', function () {
-      const overlay = document.getElementById('checkoutOverlay');
-      const frame = document.getElementById('checkoutFrame');
-      const openBtn = document.getElementById('openCheckoutBtn');
-      const closeBtn = document.getElementById('closeCheckoutBtn');
+    (function () {
+      // Production URL would point at your hosted checkout, e.g.
+      //   https://x.nbsoft.in/checkout.php
+      // Same-origin "/checkout.php" is fine when partners are on our subdomain,
+      // or when testing locally.
+      const CHECKOUT_URL = 'checkout.php';
 
-      function open() {
-        frame.setAttribute('src', 'checkout.php');
+      const overlay = document.getElementById('gcsOverlay');
+      const frame   = document.getElementById('gcsFrame');
+      const closeBtn = document.getElementById('gcsCloseBtn');
+      const loader  = document.getElementById('gcsLoader');
+
+      function buildUrl(opts) {
+        const params = new URLSearchParams();
+        if (opts && opts.product) params.set('product', opts.product);
+        return params.toString() ? `${CHECKOUT_URL}?${params}` : CHECKOUT_URL;
+      }
+
+      function open(opts) {
+        loader.style.display = 'flex';
+        frame.setAttribute('src', buildUrl(opts));
         overlay.classList.add('is-open');
-        document.body.classList.add('checkout-open');
+        document.body.classList.add('gcs-open');
       }
 
       function close() {
         overlay.classList.remove('is-open');
-        document.body.classList.remove('checkout-open');
-        // Wipe iframe so the inner SDK starts clean on next open.
+        document.body.classList.remove('gcs-open');
         frame.setAttribute('src', 'about:blank');
       }
 
-      openBtn.addEventListener('click', open);
-      closeBtn.addEventListener('click', close);
+      // Hide loader once the iframe has loaded checkout.php.
+      frame.addEventListener('load', function () {
+        if (frame.getAttribute('src') !== 'about:blank') {
+          loader.style.display = 'none';
+        }
+      });
 
-      // Click on the dark backdrop (but not the iframe area itself) closes it.
+      closeBtn.addEventListener('click', close);
       overlay.addEventListener('click', function (e) {
         if (e.target === overlay) close();
       });
-
-      // Escape key closes it.
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && overlay.classList.contains('is-open')) close();
       });
-    });
+
+      // Listen for postMessage from checkout.php / Kinguin SDK if it ever wants
+      // to close the overlay (e.g. on successful purchase). Optional hook.
+      window.addEventListener('message', function (e) {
+        if (e.data && e.data.gcs === 'close') close();
+      });
+
+      // Expose the embed API on a global namespace.
+      window.GCS = {
+        openCheckout: open,
+        closeCheckout: close,
+      };
+    })();
   </script>
 </body>
 </html>
